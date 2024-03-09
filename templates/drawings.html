@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quick Draw Gallery</title>
+    <style>
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr); /* Dynamically set by JavaScript */
+            gap: 10px;
+            padding: 10px;
+        }
+        .svg-container {
+            overflow: hidden; /* Keeps everything within the cell */
+            display: flex; /* Enables centering with flexbox */
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            width: 100%; /* Ensure container fills grid cell */
+            height: 100%; /* Adjusted to maintain a consistent container height */
+        }
+        .svg-container svg {
+            width: 50%; /* Scaled down to provide padding effect */
+            height: auto; /* Adjust height automatically to maintain aspect ratio */
+            margin: auto; /* Center the SVG within its container */
+        }
+    </style>
+    
+    
+    
+</head>
+<body>
+    <button id="download-svg">Download SVG</button>
+
+    <div id="grid" class="grid">
+        {% for svg in svgs %}
+            <div class="svg-container">{{ svg|safe }}</div>
+        {% endfor %}
+    </div>
+    <script>
+        // JavaScript to dynamically set the grid layout
+        document.addEventListener('DOMContentLoaded', function() {
+            var columns = {{ columns }};
+            var grid = document.getElementById('grid');
+            grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+        });
+    </script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adjust the grid columns based on user input
+        var columns = {{ columns }};
+        var grid = document.getElementById('grid');
+        grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+    
+        // Find all SVGs and adjust their size
+        var svgs = document.querySelectorAll('.svg-container svg');
+        svgs.forEach(function(svg) {
+            var bbox = svg.getBBox(); // Get the bounding box of the SVG content
+            var viewBox = [0, 0, bbox.width, bbox.height].join(' ');
+            svg.setAttribute('viewBox', viewBox); // Set the viewBox to match the bounding box
+            svg.style.width = '100%'; // Scale width to 100% of container
+            svg.style.height = 'auto'; // Adjust height automatically to maintain aspect ratio
+        });
+    });
+    </script>
+    
+    <script>
+        document.getElementById('download-svg').addEventListener('click', function() {
+            const svgs = document.querySelectorAll('.svg-container svg');
+            let combinedSVGContent = `<svg xmlns="http://www.w3.org/2000/svg">`;
+            const columns = {{ columns }};
+            const svgWidth = 200; // Adjust based on your cell size
+            const svgHeight = 200; // Adjust based on your cell size
+            const scale = 0.8; // Scale factor to mimic 80% size within the cell
+            let maxX = 0;
+            let maxY = 0;
+        
+            svgs.forEach((svg, index) => {
+                const col = index % columns;
+                const row = Math.floor(index / columns);
+                const x = col * svgWidth + svgWidth * (1 - scale) / 2; // Center horizontally in cell
+                const y = row * svgHeight + svgHeight * (1 - scale) / 2; // Center vertically in cell
+        
+                // Scale and position the SVG content
+                let svgContent = svg.innerHTML;
+                const scaledWidth = svgWidth * scale;
+                const scaledHeight = svgHeight * scale;
+        
+                // Wrapping each SVG content in a scaled and translated group
+                combinedSVGContent += `<g transform="translate(${x}, ${y}) scale(${scale})">${svgContent}</g>`;
+
+                maxX = Math.max(maxX, x + scaledWidth);
+                maxY = Math.max(maxY, y + scaledHeight);
+                });
+
+                combinedSVGContent += `</svg>`;
+                combinedSVGContent = combinedSVGContent.replace('<svg xmlns="http://www.w3.org/2000/svg">', `<svg xmlns="http://www.w3.org/2000/svg" width="${maxX}" height="${maxY}">`);
+
+            // Create a Blob from the combined SVG content
+            const blob = new Blob([combinedSVGContent], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(blob);
+
+            // Create a temporary link to trigger the download
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'combined-drawings.svg'; // Name of the file to be downloaded
+            document.body.appendChild(link);
+            link.click();
+
+            // Clean up
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+    });
+    </script>
+
+    
+
+</body>
+</html>
